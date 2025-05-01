@@ -1,36 +1,44 @@
 import tensorflow as tf
+from tensorflow import keras
 import tensorflow_datasets as tfds
 import time
 
-#ds = tfds.load('mnist', split='train').batch(32).prefetch()
-# Display some benchmark statistics
-#tfds.benchmark(ds, batch_size=32)
-# Second iteration is much faster, due to auto-caching
-#tfds.benchmark(ds, batch_size=32)
+(ds_train, ds_test), ds_info = tfds.load(
+    'mnist',
+    split=['train', 'test'],
+    shuffle_files=True,
+    as_supervised=True,
+    with_info=True,
+)
+def normalize_img(image, label):
+  """Normalizes images: `uint8` -> `float32`."""
+  return tf.cast(image, tf.float32) / 255., label
 
-class ArtificialDataset(tf.data.Dataset):
-    def _generator(num_samples):
-        # Opening the file
-        time.sleep(0.03)
+ds_train = ds_train.map(
+    normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
+ds_train = ds_train.cache()
+ds_train = ds_train.shuffle(ds_info.splits['train'].num_examples)
+ds_train = ds_train.batch(128)
+ds_train = ds_train.prefetch(tf.data.AUTOTUNE)
+ds_test = ds_test.map(
+    normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
+ds_test = ds_test.batch(128)
+ds_test = ds_test.cache()
+ds_test = ds_test.prefetch(tf.data.AUTOTUNE)
 
-        for sample_idx in range(num_samples):
-            # Reading data (line, record) from the file
-            time.sleep(0.015)
+model = tf.keras.models.Sequential([
+  tf.keras.layers.Flatten(input_shape=(28, 28)),
+  tf.keras.layers.Dense(128, activation='relu'),
+  tf.keras.layers.Dense(10)
+])
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(0.001),
+    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+    metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
+)
 
-            yield (sample_idx,)
-
-    def __new__(cls, num_samples=3):
-        return tf.data.Dataset.from_generator(
-            cls._generator,
-            output_signature = tf.TensorSpec(shape = (1,), dtype = tf.int64),
-            args=(num_samples,)
-        )
-def benchmark(dataset, num_epochs=2):
-    start_time = time.perf_counter()
-    for epoch_num in range(num_epochs):
-        for sample in dataset:
-            # Performing a training step
-            time.sleep(0.01)
-    print("Execution time:", time.perf_counter() - start_time)
-
-benchmark(ArtificialDataset())
+model.fit(
+    ds_train,
+    epochs=6,
+    validation_data=ds_test,
+)
