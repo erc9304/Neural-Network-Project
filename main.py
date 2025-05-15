@@ -53,7 +53,7 @@ path = kagglehub.dataset_download("jcprogjava/handwritten-digits-dataset-not-in-
 print("Path to dataset files:", path)
 
 source_dir = os.path.join(path, "dataset")
-target_dir = os.path.join(path, "flattened_digits")
+target_dir = os.path.join(path, "flattened_dataset")
 
 os.makedirs(target_dir, exist_ok=True)
 
@@ -72,7 +72,7 @@ for digit in range(10):
 
 
 ds_kaggle_test = tf.keras.utils.image_dataset_from_directory(
-    os.path.join(path, "flattened_digits"),
+    os.path.join(path, "flattened_dataset"),
     labels='inferred',
     label_mode='int',
     image_size=(28, 28),
